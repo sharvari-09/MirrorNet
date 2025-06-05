@@ -2,34 +2,50 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/bhaktimore18/mirrornet/internal/crypto"
 )
 
 func main() {
-	fmt.Println("MirrorNet Identity Booting....")
+	fmt.Println("MirrorNet Identity Booting...")
 
-	identity, err := crypto.GenerateIdentity()
-	if err != nil {
-		panic(err)
+	const identityPath = ".mirror_id"
+	var identity *crypto.Identity
+
+	//Load or create identity
+	if _, err := os.Stat(identityPath); err == nil {
+		fmt.Println("Existing identity found. Loading...")
+		identity, err = crypto.LoadIdentity(identityPath)
+		if err != nil {
+			panic("Failed to load identity: " + err.Error())
+		}
+	} else {
+		fmt.Println("✨ No identity found. Generating new one...")
+		identity, err = crypto.GenerateIdentity()
+		if err != nil {
+			panic("Failed to generate identity: " + err.Error())
+		}
+		err = identity.SaveIdentity(identityPath)
+		if err != nil {
+			panic("Failed to save identity: " + err.Error())
+		}
+		fmt.Println("New identity saved to", identityPath)
 	}
 
-	fmt.Println("Identity Generated!")
+	//Print identity info
+	fmt.Println("Identity Loaded Successfully")
+	fmt.Printf("Public Key: %x\n", identity.PublicKey)
+	fmt.Printf("Peer ID: %s\n", identity.PeerID)
 
-	//saving the identity to disk i.e. inside .mirror folder
+	// Test signing + verification
+	msg := []byte("Hello MirrorNet!")
+	sig, _ := identity.SignMessage(msg)
+	fmt.Printf("Signature: %x\n", sig)
 
-	err = identity.SaveIdentity(".mirror_id")
-	if err != nil {
-		panic(err)
+	if identity.VerifyMessage(msg, sig) {
+		fmt.Println("Signature Verified: Authentic message!")
+	} else {
+		fmt.Println("Signature Verification Failed!")
 	}
-
-	fmt.Println("Identity saved to .mirror_id")
-
-	//loading it back to confirm
-	loaded, err := crypto.LoadIdentity(".mirror_id")
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Loaded Public key : ", loaded.PublicKey)
 }
