@@ -1,51 +1,47 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/bhaktimore18/mirrornet/internal/crypto"
+	"github.com/bhaktimore18/mirrornet/internal/network"
 )
 
 func main() {
-	fmt.Println("MirrorNet Identity Booting...")
+	idPath := flag.String("id", ".mirror_id", "Path to identity file")
+	flag.Parse()
 
-	const identityPath = ".mirror_id"
+	fmt.Println("📦 MirrorNet Identity Booting...")
+
 	var identity *crypto.Identity
+	var err error
 
-	//Load or create identity
-	if _, err := os.Stat(identityPath); err == nil {
-		fmt.Println("Existing identity found. Loading...")
-		identity, err = crypto.LoadIdentity(identityPath)
+	if _, err := os.Stat(*idPath); err == nil {
+		identity, err = crypto.LoadIdentity(*idPath)
 		if err != nil {
-			panic("Failed to load identity: " + err.Error())
+			log.Fatal("❌ Failed to load identity:", err)
 		}
+		fmt.Println("✅ Loaded identity from", *idPath)
 	} else {
-		fmt.Println("✨ No identity found. Generating new one...")
 		identity, err = crypto.GenerateIdentity()
 		if err != nil {
-			panic("Failed to generate identity: " + err.Error())
+			log.Fatal("❌ Failed to generate identity:", err)
 		}
-		err = identity.SaveIdentity(identityPath)
+
+		err = identity.SaveIdentity(*idPath)
 		if err != nil {
-			panic("Failed to save identity: " + err.Error())
+			log.Fatal("❌ Failed to save identity:", err)
 		}
-		fmt.Println("New identity saved to", identityPath)
+		fmt.Println("✅ New identity generated and saved at", *idPath)
 	}
 
-	//Print identity info
-	fmt.Println("Identity Loaded Successfully")
-	fmt.Printf("Public Key: %x\n", identity.PublicKey)
-	fmt.Printf("Peer ID: %s\n", identity.PeerID)
-
-	// Test signing + verification
-	msg := []byte("Hello MirrorNet!")
-	sig, _ := identity.SignMessage(msg)
-	fmt.Printf("Signature: %x\n", sig)
-
-	if identity.VerifyMessage(msg, sig) {
-		fmt.Println("Signature Verified: Authentic message!")
-	} else {
-		fmt.Println("Signature Verification Failed!")
+	_, err = network.StartPeerDiscovery()
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	select {}
 }
