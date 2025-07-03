@@ -9,10 +9,12 @@ import (
 	"os"             // To read/write files
 )
 
+
+
 // Identity just holds a user's keys — public (you can share) and private (keep this safe!)
 type Identity struct {
 	PublicKey  ed25519.PublicKey  //used to verify stuff we signed, safe to give out
-	PrivateKey ed25519.PrivateKey //used to sign stuff, keep this private
+	PrivateKey []byte //used to sign stuff, keep this private
 }
 
 // GenerateIdentity creates a fresh new key pair (basically a new identity)

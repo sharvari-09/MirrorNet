@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	// "crypto/ed25519"
 	"fmt"
 	"time"
 
@@ -12,6 +13,9 @@ import (
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	tcp "github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	ma "github.com/multiformats/go-multiaddr"
+
+	lpcrypto "github.com/libp2p/go-libp2p/core/crypto"
+	// mycrypto "github.com/bhaktimore18/mirrornet/internal/crypto"
 )
 
 const serviceTag = "mirrornet-p2p"
@@ -61,6 +65,44 @@ func StartPeerDiscovery() (host.Host, error) {
 		return nil, fmt.Errorf("❌ Failed to run mDNS: %w", err)
 	}
 
+	// if err := mdnsService.Start(); err != nil {
+	// 	return nil, fmt.Errorf("❌ Failed to run mDNS: %w", err)
+	// }
+
+	fmt.Println("🔍 mDNS discovery running with tag:", serviceTag)
+
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+		}
+	}()
+
+	return node, nil
+}
+
+func StartPeerDiscoveryWithIdentity(priv lpcrypto.PrivKey, port int) (host.Host, error) {
+	// listenAddr, _ := ma.NewMultiaddr("/ip4/0.0.0.0/tcp/0")
+	node, err := libp2p.New(
+		// libp2p.ListenAddrs(listenAddr),
+		libp2p.ListenAddrStrings(
+			fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),
+		),
+		libp2p.Identity(priv),
+		libp2p.Transport(tcp.NewTCPTransport),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("🚀 MirrorNet Node started")
+	fmt.Println("🆔 Peer ID:", node.ID().String())
+	fmt.Println("🌐 Listening on:")
+	for _, addr := range node.Addrs() {
+		fmt.Printf("   → %s/p2p/%s\n", addr.String(), node.ID().String())
+	}
+
+	notifee := &Notifee{h: node}
+	mdnsService := mdns.NewMdnsService(node, serviceTag, notifee)
 	if err := mdnsService.Start(); err != nil {
 		return nil, fmt.Errorf("❌ Failed to run mDNS: %w", err)
 	}

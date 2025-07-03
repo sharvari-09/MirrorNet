@@ -25,3 +25,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# http certificates
+# These files are often used for local development with HTTPS.
+# They should not be committed to the repository.
+/key.pem
+/cert.pem

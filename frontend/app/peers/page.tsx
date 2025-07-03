@@ -35,71 +35,8 @@ interface Peer {
   version: string
 }
 
-const mockPeers: Peer[] = [
-  {
-    id: "peer_1a2b3c4d5e",
-    address: "192.168.1.100:8080",
-    status: "online",
-    latency: 45,
-    lastSeen: "2024-01-15 14:32:15",
-    storageOffered: 50 * 1024 * 1024 * 1024, // 50GB
-    storageUsed: 12 * 1024 * 1024 * 1024, // 12GB
-    filesShared: 23,
-    reputation: 98,
-    version: "1.2.3",
-  },
-  {
-    id: "peer_4d5e6f7g8h",
-    address: "10.0.0.50:8080",
-    status: "online",
-    latency: 78,
-    lastSeen: "2024-01-15 14:31:42",
-    storageOffered: 100 * 1024 * 1024 * 1024, // 100GB
-    storageUsed: 45 * 1024 * 1024 * 1024, // 45GB
-    filesShared: 67,
-    reputation: 95,
-    version: "1.2.3",
-  },
-  {
-    id: "peer_7g8h9i0j1k",
-    address: "172.16.0.25:8080",
-    status: "offline",
-    latency: null,
-    lastSeen: "2024-01-15 13:45:18",
-    storageOffered: 25 * 1024 * 1024 * 1024, // 25GB
-    storageUsed: 8 * 1024 * 1024 * 1024, // 8GB
-    filesShared: 15,
-    reputation: 87,
-    version: "1.2.2",
-  },
-  {
-    id: "peer_0j1k2l3m4n",
-    address: "203.0.113.42:8080",
-    status: "online",
-    latency: 123,
-    lastSeen: "2024-01-15 14:30:55",
-    storageOffered: 75 * 1024 * 1024 * 1024, // 75GB
-    storageUsed: 28 * 1024 * 1024 * 1024, // 28GB
-    filesShared: 41,
-    reputation: 92,
-    version: "1.2.3",
-  },
-  {
-    id: "peer_3m4n5o6p7q",
-    address: "198.51.100.15:8080",
-    status: "connecting",
-    latency: null,
-    lastSeen: "2024-01-15 14:32:01",
-    storageOffered: 200 * 1024 * 1024 * 1024, // 200GB
-    storageUsed: 89 * 1024 * 1024 * 1024, // 89GB
-    filesShared: 156,
-    reputation: 99,
-    version: "1.2.4",
-  },
-]
-
 export default function PeersPage() {
-  const [peers, setPeers] = useState<Peer[]>(mockPeers)
+  const [peers, setPeers] = useState<Peer[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -170,19 +107,26 @@ export default function PeersPage() {
   const totalStorage = peers.reduce((acc, peer) => acc + peer.storageOffered, 0)
   const usedStorage = peers.reduce((acc, peer) => acc + peer.storageUsed, 0)
 
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPeers((prev) =>
-        prev.map((peer) => ({
-          ...peer,
-          latency: peer.status === "online" ? Math.floor(Math.random() * 200) + 20 : null,
-        })),
-      )
-    }, 5000)
+  // --- Networking config ---
+  const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const port = '8080'; // your backend port on Codespaces
+  const url = `${protocol}//${host}:${port}/api/peers`;
 
-    return () => clearInterval(interval)
-  }, [])
+  // --- Fetch peers on mount ---
+  useEffect(() => {
+    const fetchPeers = async () => {
+      try {
+        // Use correct Codespaces endpoint for backend
+        const res = await fetch("https://urban-space-memory-9p6p9grvjj2xqrj-8080.app.github.dev/api/peers");
+        const data = await res.json();
+        setPeers(data.peers);
+      } catch (err) {
+        console.error("Failed to fetch peers:", err);
+      }
+    };
+    fetchPeers();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -216,7 +160,7 @@ export default function PeersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-500">{onlinePeers}</div>
-            <p className="text-xs text-muted-foreground">{Math.round((onlinePeers / peers.length) * 100)}% connected</p>
+            <p className="text-xs text-muted-foreground">{peers.length > 0 ? Math.round((onlinePeers / peers.length) * 100) : 0}% connected</p>
           </CardContent>
         </Card>
         <Card>
@@ -236,10 +180,12 @@ export default function PeersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {Math.round(
-                peers.filter((p) => p.latency).reduce((acc, p) => acc + (p.latency || 0), 0) /
-                  peers.filter((p) => p.latency).length,
-              )}
+              {peers.filter((p) => p.latency).length > 0
+                ? Math.round(
+                    peers.filter((p) => p.latency).reduce((acc, p) => acc + (p.latency || 0), 0) /
+                      peers.filter((p) => p.latency).length,
+                  )
+                : 0}
               ms
             </div>
           </CardContent>
